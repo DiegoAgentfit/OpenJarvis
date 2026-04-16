@@ -1,11 +1,12 @@
-# Stage 1: Build frontend SPA
+# Stage 1: Build frontend SPA into the backend static directory
 FROM node:22-slim AS frontend
 
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci --ignore-scripts 2>/dev/null || npm install
 COPY frontend/ .
-RUN npm run build
+# build:backend outputs to ../src/openjarvis/server/static
+RUN npm run build:backend
 
 # Stage 2: Build Python package
 FROM python:3.12-slim-bookworm AS builder
@@ -18,7 +19,7 @@ COPY src/ src/
 COPY --from=frontend /src/openjarvis/server/static src/openjarvis/server/static/
 
 RUN pip install --no-cache-dir uv && \
-    uv pip install --system ".[server]"
+    uv pip install --system ".[server,inference-cloud]"
 
 # Stage 3: Runtime
 FROM python:3.12-slim-bookworm

@@ -1,0 +1,46 @@
+# Build artifacts
+frontend/node_modules
+frontend/dist
+src/openjarvis/server/static
+
+# Python
+__pycache__
+*.pyc
+.venv
+.pytest_cache
+.ruff_cache
+*.egg-info
+.coverage
+htmlcov
+
+# Rust
+target
+frontend/src-tauri/target
+
+# Git + editor
+.git
+.github
+.vscode
+.idea
+
+# Docs + tests (not needed in runtime image)
+docs
+tests
+site
+.mkdocs
+
+# Local data
+*.sqlite
+*.db
+logs
+traces
+results
+.worktrees
+.superpowers
+.claude
+CLAUDE.md
+
+# Secrets
+.env
+.env.*
+!.env.example
