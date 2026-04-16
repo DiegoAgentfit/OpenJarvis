@@ -878,30 +878,31 @@ function AgentCard({
       </div>
 
       {/* Budget progress bar */}
-      {(agent.config?.max_cost as number) > 0 && (
-        <div className="mb-3">
-          <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--color-text-tertiary)' }}>
-            <span>Budget</span>
-            <span>
-              {formatCost(agent.total_cost)} / ${(agent.config?.max_cost as number).toFixed(0)}
-            </span>
+      {(() => {
+        const maxCost = Number(agent.config?.max_cost) || 0;
+        if (maxCost <= 0) return null;
+        const spent = agent.total_cost ?? 0;
+        const ratio = spent / maxCost;
+        return (
+          <div className="mb-3">
+            <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--color-text-tertiary)' }}>
+              <span>Budget</span>
+              <span>
+                {formatCost(agent.total_cost)} / ${maxCost.toFixed(0)}
+              </span>
+            </div>
+            <div className="w-full rounded-full h-1.5" style={{ background: 'var(--color-bg)' }}>
+              <div
+                className="h-1.5 rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, ratio * 100)}%`,
+                  background: ratio > 0.9 ? '#ef4444' : ratio > 0.75 ? '#f59e0b' : '#22c55e',
+                }}
+              />
+            </div>
           </div>
-          <div className="w-full rounded-full h-1.5" style={{ background: 'var(--color-bg)' }}>
-            <div
-              className="h-1.5 rounded-full transition-all"
-              style={{
-                width: `${Math.min(100, ((agent.total_cost ?? 0) / (agent.config?.max_cost as number)) * 100)}%`,
-                background:
-                  ((agent.total_cost ?? 0) / (agent.config?.max_cost as number)) > 0.9
-                    ? '#ef4444'
-                    : ((agent.total_cost ?? 0) / (agent.config?.max_cost as number)) > 0.75
-                      ? '#f59e0b'
-                      : '#22c55e',
-              }}
-            />
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Row 4: Actions */}
       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -1432,8 +1433,8 @@ function InteractTab({ agentId, agentStatus }: { agentId: string; agentStatus: s
       }
       // Also refresh from server to sync any persisted messages
       await loadData();
-    } catch {
-      // ignore
+    } catch (err: any) {
+      toast.error('Failed to send message', { description: err.message || 'Unknown error' });
     } finally {
       setWaitingForResponse(false);
       setStreamingContent('');
@@ -2497,7 +2498,10 @@ function MessagingTab({ agentId }: { agentId: string }) {
     const missing = ch.fields.filter(
       (f) => f.required && !formValues[f.key]?.trim(),
     );
-    if (missing.length > 0) return;
+    if (missing.length > 0) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -2507,17 +2511,23 @@ function MessagingTab({ agentId }: { agentId: string }) {
         if (v) config[f.key] = v;
       }
       await bindAgentChannel(agentId, ch.type, config);
+      toast.success(`${ch.name} connected`);
       setSetupType(null);
       setFormValues({});
       loadBindings();
-    } catch { /* */ } finally { setLoading(false); }
+    } catch (err: any) {
+      toast.error(`Failed to connect ${ch.name}`, { description: err.message || 'Unknown error' });
+    } finally { setLoading(false); }
   };
 
   const handleRemove = async (bindingId: string) => {
     try {
       await unbindAgentChannel(agentId, bindingId);
+      toast.success('Channel disconnected');
       loadBindings();
-    } catch { /* */ }
+    } catch (err: any) {
+      toast.error('Failed to disconnect channel', { description: err.message || 'Unknown error' });
+    }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -3032,10 +3042,8 @@ export function AgentsPage() {
       const agents = await fetchManagedAgents();
       setManagedAgents(agents);
       setAgentManagerAvailable(true);
-    } catch (err: any) {
-      if (err.message?.includes('404')) {
-        setAgentManagerAvailable(false);
-      }
+    } catch {
+      setAgentManagerAvailable(false);
       setManagedAgents([]);
     } finally {
       setLoading(false);
@@ -3057,17 +3065,32 @@ export function AgentsPage() {
   }, [selectedAgentId]);
 
   const handlePause = async (id: string) => {
-    await pauseManagedAgent(id).catch(() => {});
+    try {
+      await pauseManagedAgent(id);
+      toast.success('Agent paused');
+    } catch (err: any) {
+      toast.error('Failed to pause agent', { description: err.message || 'Unknown error' });
+    }
     await refresh();
   };
 
   const handleResume = async (id: string) => {
-    await resumeManagedAgent(id).catch(() => {});
+    try {
+      await resumeManagedAgent(id);
+      toast.success('Agent resumed');
+    } catch (err: any) {
+      toast.error('Failed to resume agent', { description: err.message || 'Unknown error' });
+    }
     await refresh();
   };
 
   const handleDelete = async (id: string) => {
-    await deleteManagedAgent(id).catch(() => {});
+    try {
+      await deleteManagedAgent(id);
+      toast.success('Agent deleted');
+    } catch (err: any) {
+      toast.error('Failed to delete agent', { description: err.message || 'Unknown error' });
+    }
     if (selectedAgentId === id) setSelectedAgentId(null);
     await refresh();
   };
@@ -3511,19 +3534,19 @@ export function AgentsPage() {
           Agents
         </h1>
         <button
-          onClick={() => agentManagerAvailable && setShowWizard(true)}
-          disabled={agentManagerAvailable === false}
+          onClick={() => agentManagerAvailable === true && setShowWizard(true)}
+          disabled={agentManagerAvailable !== true}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           style={{
-            background: agentManagerAvailable === false ? 'var(--color-bg-tertiary)' : 'var(--color-accent)',
-            color: agentManagerAvailable === false ? 'var(--color-text-tertiary)' : '#fff',
+            background: agentManagerAvailable !== true ? 'var(--color-bg-tertiary)' : 'var(--color-accent)',
+            color: agentManagerAvailable !== true ? 'var(--color-text-tertiary)' : '#fff',
           }}
         >
           <Plus size={15} /> New Agent
         </button>
       </div>
 
-      {agentManagerAvailable === false && (
+      {agentManagerAvailable !== true && !loading && (
         <div
           className="mx-4 mt-2 px-4 py-3 rounded-lg flex items-center gap-3 text-sm"
           style={{
@@ -3572,12 +3595,12 @@ export function AgentsPage() {
           </p>
           <p className="text-sm mb-6">Create your first agent to get started with autonomous task management.</p>
           <button
-            onClick={() => agentManagerAvailable && setShowWizard(true)}
-            disabled={agentManagerAvailable === false}
+            onClick={() => agentManagerAvailable === true && setShowWizard(true)}
+            disabled={agentManagerAvailable !== true}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: agentManagerAvailable === false ? 'var(--color-bg-tertiary)' : 'var(--color-accent)',
-              color: agentManagerAvailable === false ? 'var(--color-text-tertiary)' : '#fff',
+              background: agentManagerAvailable !== true ? 'var(--color-bg-tertiary)' : 'var(--color-accent)',
+              color: agentManagerAvailable !== true ? 'var(--color-text-tertiary)' : '#fff',
             }}
           >
             <Plus size={15} /> Launch your first agent

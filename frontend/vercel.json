@@ -2,8 +2,6 @@
   "framework": "vite",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/v1/(.*)", "destination": "/v1/$1" },
-    { "source": "/health", "destination": "/health" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
