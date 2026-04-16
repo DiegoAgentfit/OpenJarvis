@@ -4,6 +4,15 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// When building for the Python backend (npm run build:backend), output into
+// the server static directory.  For Vercel / standalone web deploys the
+// default "dist" is used (npm run build).
+const isTauriBuild = process.env.TAURI_ENV_PLATFORM !== undefined;
+const isBackendBuild = process.argv.includes('--outDir') || process.env.BUILD_TARGET === 'backend';
+const outDir = isTauriBuild || isBackendBuild
+  ? '../src/openjarvis/server/static'
+  : 'dist';
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -35,7 +44,7 @@ export default defineConfig({
     }),
   ],
   build: {
-    outDir: '../src/openjarvis/server/static',
+    outDir,
     emptyOutDir: true,
     minify: 'esbuild',
     rollupOptions: {
