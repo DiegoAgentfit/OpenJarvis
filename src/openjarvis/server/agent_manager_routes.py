@@ -1139,10 +1139,10 @@ def create_agent_manager_router(
         if agent["status"] in ("error", "needs_attention"):
             manager.update_agent(agent_id, status="idle")
 
-        # Acquire tick BEFORE spawning thread — prevents race
-        try:
-            manager.start_tick(agent_id)
-        except ValueError:
+        # The executor's execute_tick() calls start_tick() internally,
+        # so we must NOT call it here — that would double-acquire and raise ValueError.
+        # Just validate the agent is not already running.
+        if agent["status"] == "running":
             raise HTTPException(status_code=409, detail="Agent is already running")
 
         # Re-use the server's engine + model so we don't pick a

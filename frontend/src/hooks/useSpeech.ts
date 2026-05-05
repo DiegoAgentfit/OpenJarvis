@@ -18,6 +18,17 @@ export function useSpeech() {
       .catch(() => setAvailable(false));
   }, []);
 
+  // Stop recording and release microphone on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    };
+  }, []);
+
   const startRecording = useCallback(async (): Promise<void> => {
     setError(null);
 

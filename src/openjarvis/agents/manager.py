@@ -91,7 +91,10 @@ class AgentManager:
     """Persistent agent lifecycle manager with SQLite backing."""
 
     def __init__(self, db_path: str) -> None:
+        import threading
+
         self._db_path = str(db_path)
+        self._lock = threading.Lock()
         self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
@@ -121,6 +124,10 @@ class AgentManager:
             except sqlite3.OperationalError:
                 pass  # Column already exists
         self._conn.commit()
+
+    @property
+    def db_lock(self):
+        return self._lock
 
     def close(self) -> None:
         self._conn.close()
@@ -227,18 +234,20 @@ class AgentManager:
 
     def start_tick(self, agent_id: str) -> None:
         """Mark agent as running. Raises ValueError if already running."""
-        agent = self.get_agent(agent_id)
-        if agent and agent["status"] == "running":
-            raise ValueError(f"Agent {agent_id} is already executing a tick")
-        self._set_status(agent_id, "running")
+        with self._lock:
+            agent = self.get_agent(agent_id)
+            if agent and agent["status"] == "running":
+                raise ValueError(f"Agent {agent_id} is already executing a tick")
+            self._set_status(agent_id, "running")
 
     def end_tick(self, agent_id: str) -> None:
-        self._conn.execute(
-            "UPDATE managed_agents SET status = 'idle', "
-            "current_activity = '', updated_at = ? WHERE id = ?",
-            (time.time(), agent_id),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "UPDATE managed_agents SET status = 'idle', "
+                "current_activity = '', updated_at = ? WHERE id = ?",
+                (time.time(), agent_id),
+            )
+            self._conn.commit()
 
     # ── Checkpoints ───────────────────────────────────────────────
 

@@ -87,7 +87,8 @@ def save_credential(
         for section, kvs in creds.items():
             lines.append(f"[{section}]")
             for k, v in kvs.items():
-                lines.append(f'{k} = "{v}"')
+                escaped = v.replace("\\", "\\\\").replace('"', '\\"')
+                lines.append(f'{k} = "{escaped}"')
             lines.append("")
         p.write_text("\n".join(lines))
         os.chmod(p, 0o600)
