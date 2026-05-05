@@ -39,6 +39,7 @@ Thumbs.db
 # Secrets
 .env
 .env.*
+!.env.example
 
 # Project
 *.sqlite
@@ -96,10 +97,3 @@ MagicMock/
 # Second Repos
 Inline/
 scratch/
-
-# SQLite in-memory artifacts
-:memory:
-MagicMock/
-
-# Second Repos
-Inline/

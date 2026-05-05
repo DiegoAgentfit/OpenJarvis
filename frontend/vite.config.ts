@@ -8,7 +8,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 // the server static directory.  For Vercel / standalone web deploys the
 // default "dist" is used (npm run build).
 const isTauriBuild = process.env.TAURI_ENV_PLATFORM !== undefined;
-const isBackendBuild = process.argv.includes('--outDir') || process.env.BUILD_TARGET === 'backend';
+const isBackendBuild = process.env.BUILD_TARGET === 'backend';
 const outDir = isTauriBuild || isBackendBuild
   ? '../src/openjarvis/server/static'
   : 'dist';
